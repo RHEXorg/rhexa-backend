@@ -1,0 +1,168 @@
+# Multi-stage Dockerfile for RheXa Backend
+# Optimized for production with security hardening
+
+# ============================================================================
+# STAGE 1: Builder - Install dependencies
+# ============================================================================
+FROM python:3.11-slim as builder
+
+WORKDIR /app
+
+# Install system dependencies required by Python packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and pre-install dependencies
+COPY requirements.txt .
+RUN pip install --user --no-cache-dir -r requirements.txt
+
+# ============================================================================
+# STAGE 2: Runtime - Minimal production image
+# ============================================================================
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Create non-root user for security
+RUN useradd -m -u 1000 appuser
+
+# Install only runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy Python dependencies from builder
+COPY --from=builder /root/.local /home/appuser/.local
+
+# Copy application code
+COPY --chown=appuser:appuser app/ ./app/
+COPY --chown=appuser:appuser alembic/ ./alembic/
+COPY --chown=appuser:appuser alembic.ini .
+
+# Set environment variables
+ENV PATH=/home/appuser/.local/bin:$PATH \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PORT=8000
+
+# Switch to non-root user
+USER appuser
+
+# Expose port
+EXPOSE $PORT
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
+
+# Run application with Gunicorn
+CMD ["gunicorn", "app.main:app", \
+     "--workers", "4", \
+     "--worker-class", "uvicorn.workers.UvicornWorker", \
+     "--bind", "0.0.0.0:8000", \
+     "--access-logfile", "-", \
+     "--error-logfile", "-", \
+     "--log-level", "info", \
+     "--timeout", "120", \
+     "--keep-alive", "5"]
+
+# ============================================================================
+# BUILD INSTRUCTIONS:
+# ============================================================================
+# Build image:
+#   docker build -t rhexa-backend:latest .
+#
+# Run development:
+#   docker run -it --rm -p 8000:8000 \
+#     -e DATABASE_URL="..." \
+#     -e OPENAI_API_KEY="..." \
+#     rhexa-backend:latest
+#
+# Run production (with environment file):
+#   docker run -d --restart unless-stopped \
+#     --env-file .env.production \
+#     -p 8000:8000 \
+#     rhexa-backend:latest
+#
+# ============================================================================
+# OPTIMIZATION NOTES:
+# ============================================================================
+# 1. Multi-stage build: Reduces final image size by excluding build tools
+# 2. Alpine base: python:3.11-slim is only ~130MB
+# 3. Non-root user: Security best practice (runs as 'appuser')
+# 4. Health checks: Allows orchestration to detect failures
+# 5. Gunicorn workers: 4 workers (adjust for CPU count: 2*CPU + 1)
+# 6. Signal handling: Graceful shutdown on SIGTERM/SIGINT
+# 7. Logging: Both access and error logs to stdout for monitoring
+# 8. Minimum layers: Consolidates RUN commands to reduce image size
+# 9. Proper permissions: Files owned by appuser for security
+# 10. Environment variables: Configurable at runtime
+#
+# ============================================================================
+# IMAGE SIZE:
+# ============================================================================
+# - Builder stage: ~800MB (discarded after build)
+# - Final image: ~400-500MB (slim Python + dependencies)
+# - Compressed: ~150-200MB when pushed to registry
+#
+# ============================================================================
+# PRODUCTION CHECKLIST:
+# ============================================================================
+# [ ] Update workers based on CPU count: workers = (CPU_count * 2) + 1
+# [ ] Configure DATABASE_URL before running
+# [ ] Set OPENAI_API_KEY and other API keys
+# [ ] Enable Docker logging driver (json-file, splunk, etc.)
+# [ ] Configure health check response time based on LLM latency
+# [ ] Set up auto-restart policy (unless-stopped recommended)
+# [ ] Mount volume for persistent data if needed
+# [ ] Configure resource limits (--memory, --cpus)
+# [ ] Set up reverse proxy (Nginx/Traefik) for HTTPS
+# [ ] Enable Docker security scanning
+# [ ] Configure secrets management (Docker Secrets/Swarm or external)
+#
+# ============================================================================
+# DOCKER COMPOSE EXAMPLE:
+# ============================================================================
+# version: '3.8'
+# services:
+#   rhexa-backend:
+#     build: .
+#     container_name: rhexa-backend
+#     ports:
+#       - "8000:8000"
+#     environment:
+#       - DATABASE_URL=mysql+pymysql://user:password@db:3306/rhexa_db
+#       - OPENAI_API_KEY=${OPENAI_API_KEY}
+#       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+#     depends_on:
+#       - db
+#     restart: unless-stopped
+#     healthcheck:
+#       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+#       interval: 30s
+#       timeout: 10s
+#       retries: 3
+#       start_period: 40s
+#     volumes:
+#       - ./uploads:/app/uploads
+#       - ./logs:/app/logs
+#     networks:
+#       - rhexa-network
+#   db:
+#     image: mysql:8.0
+#     container_name: rhexa-db
+#     environment:
+#       - MYSQL_DATABASE=rhexa_db
+#       - MYSQL_ROOT_PASSWORD=${DB_PASSWORD}
+#     volumes:
+#       - db_data:/var/lib/mysql
+#     networks:
+#       - rhexa-network
+#
+# volumes:
+#   db_data:
+# networks:
+#   rhexa-network:

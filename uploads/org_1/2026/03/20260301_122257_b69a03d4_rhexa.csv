@@ -1,0 +1,27 @@
+Question,Answer,Link
+What is RheXa?,RheXa is an advanced AI platform that allows you to build custom intelligent AI chatbots trained entirely on your own data. You can upload documents connect databases and embed your personal AI assistant directly into your website to answer customer questions accurately and instantly.,/
+How do I sign up or create an account?,Creating an account is free and takes seconds. Visit the signup page enter your email and password or use Google or GitHub login.,/signup
+How do I log in to my dashboard?,Visit the login page and enter your credentials to access your organization dashboard.,/login
+How much does RheXa cost? What is the pricing?,RheXa offers flexible pricing including a Free Tier for testing. For higher limits document uploads database connections and branding removal you can upgrade to Pro or Enterprise plans.,/dashboard/settings
+Is there a free trial?,Yes. The Free Tier acts as a permanent free trial and does not require a credit card.,/signup
+How do I train the AI? Where do I upload my data?,Go to the Data Sources section in your dashboard. Upload PDFs Word files CSV Excel files add website URLs or connect SQL databases. The AI processes everything automatically.,/dashboard/data-sources
+What types of files can I upload to train the bot?,Supported formats include PDF DOCX TXT CSV and XLSX files.,/dashboard/data-sources
+How do I implement or embed the chatbot on my website?,Go to Widget Management copy the one line embed script and paste it before the closing body tag of your website.,/dashboard/widget
+Will the bot slow down my website?,No. The widget loads asynchronously so it does not block your website loading speed or affect SEO.,/dashboard/widget
+Will the chat widget mess up my website CSS or design?,No. The widget uses Shadow DOM isolation which prevents style conflicts with your website.,
+Can I customize how the chat widget looks?,Yes. You can change bot name theme color icon default dark or light mode and other appearance settings from Widget Management.,/dashboard/widget
+How do I change the default icon of the chat bubble?,Inside Widget Management choose from built in icons like MessageSquare MessageCircle Bot Sparkles or Zap.,/dashboard/widget
+Does the widget have a dark mode?,Yes. Admins can set default theme and users can toggle dark or light mode inside the chat window.,/dashboard/widget
+What is the glowing border on the chat bubble?,It is RheXa signature premium RGB metallic border designed to give a futuristic professional look.,
+How do I remove the Powered by RheXa watermark branding?,Disable branding inside Widget settings. Removing branding may require a Pro plan.,/dashboard/widget
+Can I put the widget on the left side instead of the right?,Yes. Choose Bottom Left or Bottom Right in Widget Position settings.,/dashboard/widget
+How do I test the chatbot before going live?,Use the internal Chat page in your dashboard to privately test responses before embedding on your website.,/dashboard/chat
+Why does the AI say it cannot find an answer?,If the answer is not in your uploaded documents the AI will respond that it cannot find it. Upload relevant documents to improve answers.,/dashboard/data-sources
+How do I reset my API or Widget Key?,Go to Widget Management and rotate your authentication key. Replace the old key on your website immediately.,/dashboard/widget
+Is my data secure and private?,Yes. All data is encrypted at rest and in transit and strictly isolated per organization.,
+What is RAG technology?,RAG stands for Retrieval Augmented Generation. The system retrieves relevant paragraphs from your uploaded data and uses them to generate accurate factual answers.,
+Who do I contact for support?,Use the Support button inside the dashboard or email support. Enterprise plans include a dedicated account manager.,
+What is the Dashboard Home for?,Dashboard Home shows usage metrics total questions performance insights and recent chats.,/dashboard
+Can I delete a bot?,Yes. Disable it or permanently delete it from the Widget list.,/dashboard/widget
+Can I see what users are asking the bot?,Yes. Full chat transcripts are available inside Chat History in your dashboard.,/dashboard/chat
+Does the AI support multiple languages?,Yes. RheXa can understand and respond in multiple languages automatically based on user input.,

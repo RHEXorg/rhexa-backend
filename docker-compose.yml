@@ -1,0 +1,260 @@
+version: '3.8'
+
+# ============================================================================
+# RheXa Backend Docker Compose Stack
+# Complete setup with Database and Backend service
+# ============================================================================
+
+services:
+  # ========================================================================
+  # MySQL Database Service
+  # ========================================================================
+  db:
+    image: mysql:8.0-alpine
+    container_name: rhexa-db
+    restart: unless-stopped
+    
+    environment:
+      MYSQL_DATABASE: rhexa_db
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_password_change_me}
+      MYSQL_USER: ${DB_USER:-rhexa_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-rhexa_password_change_me}
+      MYSQL_CHARSET: utf8mb4
+      MYSQL_COLLATION: utf8mb4_unicode_ci
+    
+    ports:
+      - "3306:3306"
+    
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    
+    networks:
+      - rhexa-network
+    
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:-root_password_change_me}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-storage-engine=InnoDB
+      - --max_connections=1000
+      - --max_allowed_packet=256M
+
+  # ========================================================================
+  # Redis Cache Service (Optional but Recommended)
+  # ========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: rhexa-redis
+    restart: unless-stopped
+    
+    ports:
+      - "6379:6379"
+    
+    volumes:
+      - redis_data:/data
+    
+    networks:
+      - rhexa-network
+    
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_password_change_me}
+
+  # ========================================================================
+  # RheXa Backend Service
+  # ========================================================================
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rhexa-backend
+    restart: unless-stopped
+    
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    
+    environment:
+      # Application
+      APP_NAME: RheXa API
+      ENV: production
+      DEBUG: "false"
+      SECRET_KEY: ${SECRET_KEY:-change-me-to-a-secure-random-string}
+      
+      # Database
+      DATABASE_URL: mysql+pymysql://${DB_USER:-rhexa_user}:${DB_PASSWORD:-rhexa_password_change_me}@db:3306/rhexa_db
+      SQLALCHEMY_TRACK_MODIFICATIONS: "false"
+      
+      # Redis
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_password_change_me}@redis:6379/0
+      
+      # AI/LLM
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      
+      # OAuth
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
+      
+      # Email
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      EMAIL_FROM: ${EMAIL_FROM:-noreply@rhexa.ai}
+      
+      # Security
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:3001}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1}
+      
+      # Storage
+      UPLOAD_DIR: /app/uploads
+      MAX_UPLOAD_SIZE: 104857600  # 100MB
+      
+      # Logging
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_FILE: /app/logs/rhexa.log
+    
+    ports:
+      - "8000:8000"
+    
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+      - ./static:/app/static
+    
+    networks:
+      - rhexa-network
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '1'
+          memory: 512M
+
+  # ========================================================================
+  # Nginx Reverse Proxy (Optional)
+  # ========================================================================
+  nginx:
+    image: nginx:alpine
+    container_name: rhexa-nginx
+    restart: unless-stopped
+    
+    depends_on:
+      - backend
+    
+    ports:
+      - "80:80"
+      - "443:443"
+    
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - ./static:/usr/share/nginx/html:ro
+    
+    networks:
+      - rhexa-network
+    
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# ============================================================================
+# Networks
+# ============================================================================
+networks:
+  rhexa-network:
+    driver: bridge
+
+# ============================================================================
+# Volumes
+# ============================================================================
+volumes:
+  db_data:
+    driver: local
+  redis_data:
+    driver: local
+
+# ============================================================================
+# USAGE INSTRUCTIONS
+# ============================================================================
+# 1. Copy environment template
+#    cp .env.example .env.production
+#
+# 2. Update values in .env.production:
+#    - DB_ROOT_PASSWORD
+#    - DB_PASSWORD
+#    - SECRET_KEY
+#    - API_KEYS (OpenAI, OpenRouter)
+#    - OAuth credentials
+#
+# 3. Start services (development)
+#    docker-compose up
+#
+# 4. Start services (production, background)
+#    docker-compose up -d
+#
+# 5. View logs
+#    docker-compose logs -f backend
+#
+# 6. Run migrations
+#    docker-compose exec backend alembic upgrade head
+#
+# 7. Stop services
+#    docker-compose down
+#
+# 8. Remove volumes (careful!)
+#    docker-compose down -v
+#
+# ============================================================================
+# DEVELOPMENT TIPS
+# ============================================================================
+# - Access MySQL: mysql -h 127.0.0.1 -u rhexa_user -p rhexa_db
+# - Access Redis: redis-cli -h 127.0.0.1 -a password
+# - Backend logs: docker logs rhexa-backend -f
+# - Rebuild image: docker-compose build --no-cache
+# - Scale services: docker-compose up -d --scale backend=3
+#
+# ============================================================================
+# PRODUCTION CONSIDERATIONS
+# ============================================================================
+# 1. Change all default passwords in .env.production
+# 2. Use secrets management (Docker Secrets, Vault)
+# 3. Configure SSL certificates
+# 4. Set up centralized logging (ELK, Splunk, CloudWatch)
+# 5. Enable database backups
+# 6. Configure health check monitoring
+# 7. Set resource limits (see 'deploy' section)
+# 8. Use named volumes for data persistence
+# 9. Configure logging drivers (splunk, awslogs, etc.)
+# 10. Set up auto-recovery policies
+#
+# ============================================================================

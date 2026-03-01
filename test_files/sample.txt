@@ -1,0 +1,9 @@
+RheXa Knowledge Base Platform
+
+This is a sample text document for testing.
+RheXa allows organizations to upload documents and chat with their data.
+
+Key Features:
+- Multi-tenant architecture
+- Support for PDF, CSV, Excel files
+- AI-powered chat interface

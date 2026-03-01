@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "RheXa API"
     ENV: str = "development"
     DEBUG: bool = False
+    BACKEND_URL: str = "http://127.0.0.1:8000"
 
     # Security
     SECRET_KEY: str = "super-secret-change-this-in-production"
@@ -40,13 +41,13 @@ class Settings(BaseSettings):
     # Google OAuth
     GOOGLE_CLIENT_ID: str | None = None
     GOOGLE_CLIENT_SECRET: str | None = None
-    GOOGLE_REDIRECT_URI: str = "http://127.0.0.1:8000/api/auth/google/callback"
-    FRONTEND_URL: str = "http://localhost:3000"
+    GOOGLE_REDIRECT_URI: str | None = None # Computed below
+    FRONTEND_URL: str = "https://rhexa.com"
 
     # GitHub OAuth
     GITHUB_CLIENT_ID: str | None = None
     GITHUB_CLIENT_SECRET: str | None = None
-    GITHUB_REDIRECT_URI: str = "http://127.0.0.1:8000/api/auth/github/callback"
+    GITHUB_REDIRECT_URI: str | None = None # Computed below
 
     model_config = ConfigDict(
         env_file=".env",
@@ -56,3 +57,10 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Post-process redirect URIs if not provided
+if not settings.GOOGLE_REDIRECT_URI:
+    settings.GOOGLE_REDIRECT_URI = f"{settings.BACKEND_URL}/api/auth/google/callback"
+
+if not settings.GITHUB_REDIRECT_URI:
+    settings.GITHUB_REDIRECT_URI = f"{settings.BACKEND_URL}/api/auth/github/callback"

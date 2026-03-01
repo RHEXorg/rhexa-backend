@@ -9,13 +9,13 @@ class Settings(BaseSettings):
     DEBUG: bool = False
 
     # Security
-    SECRET_KEY: str
+    SECRET_KEY: str = "super-secret-change-this-in-production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
-    ENCRYPTION_KEY: str
+    ENCRYPTION_KEY: str = "-uDDh3dJo44zksJUziI7Aj5pixBsMVvv2d5dMqZu4DA="
 
     # Database
-    DATABASE_URL: str
+    DATABASE_URL: str = "sqlite:///./dev.db"
 
     # OpenRouter (Primary LLM)
     OPENROUTER_API_KEY: str | None = None

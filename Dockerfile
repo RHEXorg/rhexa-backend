@@ -4,6 +4,7 @@ FROM python:3.11-slim
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
+ENV PORT=8000
 
 # Set the working directory in the container
 WORKDIR /app
@@ -21,9 +22,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the project files into the container
 COPY . .
 
-# Expose the port the app runs on
+# Expose the port (Railway typically ignores this and uses its own)
 EXPOSE 8000
 
 # Command to run the application
-# Using gunicorn with uvicorn for production performance
-CMD ["gunicorn", "app.main:app", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:8000"]
+# Using a slightly dynamic command for the port. shell mode is usually better for env vars.
+CMD gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:$PORT

@@ -27,19 +27,13 @@ def create_app() -> FastAPI:
     Create and configure the FastAPI application.
     """
     app = FastAPI(
-        title=settings.APP_NAME,
+        title="RheXa AI Engine",
         description="""
-        # RheXa - AI-Powered Knowledge Base Platform
+        # RheXa - Enterprise-Grade AI RAG Platform
         
-        ## Features
-        - 🔐 Secure Authentication (JWT)
-        - 🏢 Real Multi-tenant Isolation
-        - 📄 Document upload and processing (PDF, CSV, Excel, TXT)
-        - 🤖 AI-powered chat with your documents
-        
-        ## Current Phase: 1.8 - Auth Service (Complete)
+        The intelligent heart of the RheXa ecosystem.
         """,
-        version="1.8.0",
+        version="1.0.0",
         debug=settings.DEBUG,
         docs_url="/docs",
         redoc_url="/redoc",
@@ -84,8 +78,8 @@ def create_app() -> FastAPI:
             "status": "ok",
             "service": "rhexa-backend",
             "environment": settings.ENV,
-            "version": "1.8.0",
-            "phase": "Auth Service Complete"
+            "version": "1.0.0",
+            "message": "System operating within mission parameters."
         }
     
     @app.get("/", tags=["System"])

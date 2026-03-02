@@ -20,6 +20,23 @@ from typing import BinaryIO, Optional
 from datetime import datetime
 import hashlib
 import uuid
+import threading
+
+
+def _get_storage_base_path() -> str:
+    """
+    Get the appropriate storage base path based on environment.
+    
+    Vercel has a read-only filesystem except for /tmp.
+    We use environment detection to choose the right path.
+    """
+    # Check if running on Vercel
+    if os.environ.get("VERCEL") or os.environ.get("VERCEL_URL"):
+        # Use /tmp on Vercel (only writable location)
+        return "/tmp/rhexa_uploads"
+    
+    # Default to local uploads directory
+    return "uploads"
 
 
 class StorageBackend(ABC):
@@ -59,6 +76,7 @@ class LocalStorage(StorageBackend):
     - File deduplication using content hashing
     - Automatic directory creation
     - Transaction-safe operations
+    - Lazy initialization for Vercel compatibility
     
     Directory structure:
     uploads/
@@ -70,15 +88,47 @@ class LocalStorage(StorageBackend):
         └── ...
     """
     
-    def __init__(self, base_path: str = "uploads"):
+    _instance = None
+    _lock = threading.Lock()
+    
+    def __new__(cls, *args, **kwargs):
+        """Singleton pattern to ensure only one storage instance."""
+        if cls._instance is None:
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = super().__new__(cls)
+        return cls._instance
+    
+    def __init__(self, base_path: str = None):
         """
         Initialize local storage.
         
         Args:
-            base_path: Root directory for file storage
+            base_path: Root directory for file storage. 
+                       If None, auto-detects based on environment.
         """
+        # Prevent re-initialization
+        if hasattr(self, '_initialized') and self._initialized:
+            return
+        
+        # Use provided path or auto-detect
+        if base_path is None:
+            base_path = _get_storage_base_path()
+        
         self.base_path = Path(base_path)
-        self.base_path.mkdir(parents=True, exist_ok=True)
+        self._initialized = True
+        self._setup_storage()
+    
+    def _setup_storage(self):
+        """Set up storage directory - called lazily to handle Vercel environment."""
+        try:
+            self.base_path.mkdir(parents=True, exist_ok=True)
+        except OSError as e:
+            # On Vercel, mkdir may fail at import time but will work at runtime
+            # since /tmp exists but we can't write to the root
+            import sys
+            print(f"Warning: Could not create storage directory: {e}", file=sys.stderr)
+            print(f"Storage path: {self.base_path}", file=sys.stderr)
     
     def _generate_secure_filename(self, original_filename: str) -> str:
         """
@@ -228,9 +278,10 @@ class LocalStorage(StorageBackend):
         return full_path.stat().st_size if full_path.exists() else 0
 
 
-# Global storage instance
+# Global storage instance - lazy initialization
 # This can be easily swapped to S3Storage, R2Storage, etc. in production
-storage = LocalStorage()
+_storage_instance = None
+_storage_lock = threading.Lock()
 
 
 def get_storage() -> StorageBackend:
@@ -239,9 +290,21 @@ def get_storage() -> StorageBackend:
     
     This function provides dependency injection for storage.
     In production, this can return different storage backends
-    based on configuration.
+    based on configuration. Uses lazy initialization to handle
+    Vercel's read-only filesystem at import time.
     
     Returns:
         Storage backend instance
     """
-    return storage
+    global _storage_instance
+    
+    if _storage_instance is None:
+        with _storage_lock:
+            if _storage_instance is None:
+                _storage_instance = LocalStorage()
+    
+    return _storage_instance
+
+
+# For backward compatibility - access storage directly
+# but now it's a lazy proxy

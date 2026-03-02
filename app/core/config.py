@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     # AI / RAG
     OPENAI_API_KEY: str | None = None
     EMBEDDING_MODEL: str = "text-embedding-3-small"
-    VECTOR_DB_PATH: str = "vector_store"
+    VECTOR_DB_PATH: str = "/tmp/vector_store" if ENV == "production" else "vector_store"
     CHUNK_SIZE: int = 1000
     CHUNK_OVERLAP: int = 200
 

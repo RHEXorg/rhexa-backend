@@ -21,22 +21,14 @@ from datetime import datetime
 import hashlib
 import uuid
 import threading
+from app.core.config import settings
 
 
 def _get_storage_base_path() -> str:
     """
     Get the appropriate storage base path based on environment.
-    
-    Vercel has a read-only filesystem except for /tmp.
-    We use environment detection to choose the right path.
     """
-    # Check if running on Vercel
-    if os.environ.get("VERCEL") or os.environ.get("VERCEL_URL"):
-        # Use /tmp on Vercel (only writable location)
-        return "/tmp/rhexa_uploads"
-    
-    # Default to local uploads directory
-    return "uploads"
+    return settings.UPLOAD_DIR
 
 
 class StorageBackend(ABC):

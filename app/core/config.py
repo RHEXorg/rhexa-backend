@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     ENCRYPTION_KEY: str = "-uDDh3dJo44zksJUziI7Aj5pixBsMVvv2d5dMqZu4DA="
 
     # Database
-    DATABASE_URL: str = "sqlite:///./dev.db"
+    DATABASE_URL: str = "sqlite:////tmp/dev.db" if ENV == "production" else "sqlite:///./dev.db"
 
     # OpenRouter (Primary LLM)
     OPENROUTER_API_KEY: str | None = None
@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     VECTOR_DB_PATH: str = "/tmp/vector_store" if ENV == "production" else "vector_store"
     CHUNK_SIZE: int = 1000
     CHUNK_OVERLAP: int = 200
+    UPLOAD_DIR: str = "/tmp/rhexa_uploads" if ENV == "production" else "uploads"
 
     # Email
     SMTP_HOST: str | None = None

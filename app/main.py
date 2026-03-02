@@ -66,8 +66,7 @@ def create_app() -> FastAPI:
     app.mount("/static", StaticFiles(directory="static"), name="static")
     
     # Serve uploaded files (avatars, etc.)
-    import os
-    uploads_dir = os.path.join(os.getcwd(), "uploads")
+    uploads_dir = settings.UPLOAD_DIR
     os.makedirs(os.path.join(uploads_dir, "avatars"), exist_ok=True)
     app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
     

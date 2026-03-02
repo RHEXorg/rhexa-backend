@@ -5,9 +5,9 @@ from pydantic import ConfigDict
 class Settings(BaseSettings):
     # App
     APP_NAME: str = "RheXa API"
-    ENV: str = "development"
+    ENV: str = "production"
     DEBUG: bool = False
-    BACKEND_URL: str = "http://127.0.0.1:8000"
+    BACKEND_URL: str = "https://rhexa-backend.vercel.app"
 
     # Security
     SECRET_KEY: str = "super-secret-change-this-in-production"

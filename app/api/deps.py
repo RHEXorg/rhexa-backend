@@ -29,8 +29,10 @@ from app.models.user import User
 from app.schemas.auth import TokenPayload
 
 # OAuth2 configuration
+# In production, use the full Vercel URL
+backend_url = settings.BACKEND_URL if settings.ENV == "production" else f"http://127.0.0.1:8000"
 reusable_oauth2 = OAuth2PasswordBearer(
-    tokenUrl=f"{settings.ENV}/auth/login" if settings.ENV != "development" else "/api/auth/login"
+    tokenUrl=f"{backend_url}/auth/login"
 )
 
 
